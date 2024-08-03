@@ -1,3 +1,7 @@
+import torch
+
+default_device = torch.device('cuda')
+
 batch_size = 8
 
 g_output_img_size = 256
