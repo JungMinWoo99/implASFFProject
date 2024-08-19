@@ -1,20 +1,24 @@
+import logger
 import torch
 import torch.nn as nn
 import torch.nn.utils as utils
 import constant
 import MLS
 import AdaIN
+import numpy as np
 
 
 class DilateResBlock(nn.Module):
     def __init__(self, input_ch, kernel, stride, dilation):
         super(DilateResBlock, self).__init__()
-        padding_size = ((kernel-1)//2)*dilation
+        padding_size = ((kernel - 1) // 2) * dilation
         self.Model = nn.Sequential(
-            utils.spectral_norm(nn.Conv2d(input_ch, input_ch, kernel_size=kernel, stride=stride, dilation=dilation, padding=padding_size)),
+            utils.spectral_norm(nn.Conv2d(input_ch, input_ch, kernel_size=kernel, stride=stride, dilation=dilation,
+                                          padding=padding_size)),
             nn.BatchNorm2d(input_ch, eps=constant.eps),
             nn.LeakyReLU(constant.LReLu_negative_slope),
-            utils.spectral_norm(nn.Conv2d(input_ch, input_ch, kernel_size=kernel, stride=stride, dilation=dilation, padding=padding_size))
+            utils.spectral_norm(nn.Conv2d(input_ch, input_ch, kernel_size=kernel, stride=stride, dilation=dilation,
+                                          padding=padding_size))
         )
 
     def forward(self, x):
@@ -67,8 +71,8 @@ class ASFF(nn.Module):
 
     def forward(self, fea_d, fea_gwa, fea_l):
         fea_m = self.conv_layer1_2(self.conv_layer1_1(torch.concat((self.pointwise_conv_layer1_1(fea_d),
-                                                                   self.pointwise_conv_layer1_2(fea_gwa),
-                                                                   self.pointwise_conv_layer1_3(fea_l)), dim=1)))
+                                                                    self.pointwise_conv_layer1_2(fea_gwa),
+                                                                    self.pointwise_conv_layer1_3(fea_l)), dim=1)))
         F_d_fea_d = self.pointwise_conv_layer2_1(self.conv_layer2_1(fea_d))
         F_g_fea_gwa = self.pointwise_conv_layer2_2(self.conv_layer2_2(fea_gwa))
         fea_d_new = fea_m * (F_g_fea_gwa - F_d_fea_d) + F_d_fea_d
@@ -136,9 +140,9 @@ class FeatureFusionBlock(nn.Module):
 class ReconstructionBlock(nn.Module):
     def __init__(self):
         super(ReconstructionBlock, self).__init__()
-        padding_size = (3-1)//2
+        padding_size = (3 - 1) // 2
         self.Model = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1,padding=padding_size, bias=True),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=padding_size, bias=True),
             DilateResBlock(256, 3, 1, 1),
             DilateResBlock(256, 3, 1, 1),
             nn.PixelShuffle(2),
@@ -146,9 +150,10 @@ class ReconstructionBlock(nn.Module):
             DilateResBlock(128, 3, 1, 1),
             DilateResBlock(128, 3, 1, 1),
             nn.PixelShuffle(2),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=padding_size, bias=True),
-            DilateResBlock(32, 3, 1, 1),
-            DilateResBlock(32, 3, 1, 1),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=padding_size, bias=True),
+            DilateResBlock(64, 3, 1, 1),
+            DilateResBlock(64, 3, 1, 1),
+            nn.Conv2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=padding_size, bias=True),
             nn.Tanh()
         )
 
@@ -178,11 +183,167 @@ class ASFFNet(nn.Module):
         return recon_img
 
 
-if __name__ == '__main__':
+def tensor_to_img(tenser):
+    save_out = tenser * 0.5 + 0.5
+    save_out = save_out.squeeze(0).permute(1, 2, 0).flip(2)  # RGB->BGR
+    save_out = np.clip(save_out.float().cpu().numpy(), 0, 1) * 255.0
+    return save_out
+
+
+# weight init
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv2d') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm2d') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0.0)
+
+
+if __name__ == '__main123123__':
     import WLS
+
     img_d = WLS.ImgData("./sample/i1.png")
     img_g = WLS.ImgData("./sample/o1.png")
     tem_bin_img = torch.ones((1, 1, 256, 256))
-    asff = ASFFNet()
-    ret = asff.forward(img_d.img_tensor, img_g.img_tensor, tem_bin_img, img_d.img_landmarks_tensor, img_g.img_landmarks_tensor)
+    asffnetG = ASFFNet()
+    ret = asffnetG.forward(img_d.img_tensor, img_g.img_tensor, tem_bin_img, img_d.img_landmarks_tensor,
+                           img_g.img_landmarks_tensor)
     print(ret.size)
+
+if __name__ == '__main__':
+    from DataSet import ASFFDataSet
+    import DirectoryUtils
+    from constant import *
+    from torch.utils.data import DataLoader
+    import torch.optim as optim
+    from tqdm import tqdm
+    import Loss
+    from ASFFDiscriminator import SNGANDiscriminator
+
+    torch.autograd.set_detect_anomaly(True)
+
+    asffnetG = ASFFNet().to(default_device)
+    asffnetD = SNGANDiscriminator().to(default_device)
+
+    asffnetG.apply(weights_init)
+    asffnetD.apply(weights_init)
+
+    train_data_set_path = DirectoryUtils.select_file("train data list csv")
+    test_data_set_path = DirectoryUtils.select_file("test data list csv")
+    wls_weight_path = DirectoryUtils.select_file("wls weight path")
+
+    train_data_list = DirectoryUtils.read_list_from_csv(train_data_set_path)
+    test_data_list = DirectoryUtils.read_list_from_csv(test_data_set_path)
+    asff_train_data = ASFFDataSet(train_data_list, wls_weight_path)
+    asff_test_data = ASFFDataSet(test_data_list, wls_weight_path)
+
+    train_dataloader = DataLoader(
+        asff_train_data,  # 위에서 생성한 데이터 셋
+        batch_size=batch_size,
+        shuffle=True,  # 데이터들의 순서는 섞어서 분할
+    )
+
+    test_dataloader = DataLoader(
+        asff_test_data,  # 위에서 생성한 데이터 셋
+        batch_size=batch_size,
+        shuffle=True,  # 데이터들의 순서는 섞어서 분할
+    )
+
+    optimizerD = optim.Adam(asffnetD.parameters(), lr=0.0002, betas=(0.5, 0.999))
+    optimizerG = optim.Adam(asffnetG.parameters(), lr=0.0002, betas=(0.5, 0.999))
+
+    G_loss_list = []
+    D_loss_list = []
+    epoch = 10
+    for e in range(epoch):
+        asffnetG.train()
+        asffnetD.train()
+        mem_snp_num = 1
+        for data in tqdm(train_dataloader, desc='Processing Batches'):
+            I_h = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
+                           data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
+            fake_validity = asffnetD(I_h.detach())
+            real_validity = asffnetD(data['hp_img_tensor'].detach())
+            G_loss = Loss.ASFFGLoss(I_h, data['hp_img_tensor'], fake_validity.detach())
+            optimizerG.zero_grad()
+            G_loss.backward()
+            optimizerG.step()
+
+            D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
+            optimizerD.zero_grad()
+            D_loss.backward()
+            optimizerD.step()
+
+        torch.cuda.empty_cache()
+
+        with torch.no_grad():
+            asffnetG.eval()
+            asffnetD.eval()
+            G_loss_sum = 0
+            D_loss_sum = 0
+            for data in tqdm(test_dataloader, desc='calculate loss'):
+                I_h = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
+                               data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
+                fake_validity = asffnetD(I_h)
+                real_validity = asffnetD(data['hp_img_tensor'])
+                G_loss = Loss.ASFFGLoss(I_h, data['hp_img_tensor'], fake_validity)
+                D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
+
+                G_loss_sum += G_loss.item()
+                D_loss_sum += D_loss.item()
+
+            G_loss_avg = G_loss_sum / len(asff_test_data)
+            D_loss_avg = D_loss_sum / len(asff_test_data)
+            G_loss_list.append(G_loss_avg)
+            D_loss_list.append(D_loss_avg)
+            # 가중치 텐서 저장
+            torch.save({
+                'epoch': e + 1,
+                'gen_state_dict': asffnetG.state_dict(),
+                'dis_state_dict': asffnetD.state_dict(),
+                'gen_optimizer': optimizerG.state_dict(),
+                'dis_optimizer': optimizerD.state_dict(),
+                'g_loss': G_loss_avg,
+                'd_loss': D_loss_avg
+            }, 'asff_train_log{}.pth'.format(e + 1))
+
+    import matplotlib.pyplot as plt
+
+    # 꺾은선 그래프 그리기
+    plt.plot([i for i in range(1, epoch + 1)], G_loss_list, marker='o', linestyle='-')
+
+    # 각 데이터 포인트에 값 표시
+    for i, value in enumerate(G_loss_list):
+        plt.plot([i for i in range(1, epoch + 1)], G_loss_list, marker='o', linestyle='-')
+        plt.annotate(f'{value:.5f}', (i, G_loss_list[i]), textcoords="offset points", xytext=(0, 10), ha='center')
+
+    # 그래프 제목과 축 레이블
+    plt.title('g loss avg')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+
+    # 그래프 저장
+    plt.savefig('g_loss.png')
+
+    # 그래프 보여주기
+    plt.show()
+
+    # 꺾은선 그래프 그리기
+    plt.plot([i for i in range(1, epoch + 1)], D_loss_list, marker='o', linestyle='-')
+
+    # 각 데이터 포인트에 값 표시
+    for i, value in enumerate(D_loss_list):
+        plt.plot([i for i in range(1, epoch + 1)], D_loss_list, marker='o', linestyle='-')
+        plt.annotate(f'{value:.5f}', (i, D_loss_list[i]), textcoords="offset points", xytext=(0, 10), ha='center')
+
+    # 그래프 제목과 축 레이블
+    plt.title('d loss avg')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+
+    # 그래프 저장
+    plt.savefig('d_loss.png')
+
+    # 그래프 보여주기
+    plt.show()

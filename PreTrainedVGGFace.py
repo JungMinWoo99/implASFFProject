@@ -1,7 +1,6 @@
-
 import torch
 import torch.nn as nn
-
+from constant import *
 
 '''
 https://ora.ox.ac.uk/objects/uuid:a5f2e93f-2768-45bb-8508-74747f85cad1/files/m911c2b9c25c06a01bee57a60cd85b378
@@ -85,6 +84,7 @@ class Vgg_face_dag(nn.Module):
         vgg_fea_4 = x23
         return vgg_fea_1, vgg_fea_2, vgg_fea_3, vgg_fea_4
 
+
 def vgg_face_dag(weights_path=None, **kwargs):
     """
     load imported model instance
@@ -92,7 +92,7 @@ def vgg_face_dag(weights_path=None, **kwargs):
     Args:
         weights_path (str): If set, loads model weights from the given path
     """
-    model = Vgg_face_dag()
+    model = Vgg_face_dag().to(default_device)
     if weights_path:
         state_dict = torch.load(weights_path)
         model.load_state_dict(state_dict)
