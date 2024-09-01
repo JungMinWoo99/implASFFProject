@@ -1,4 +1,3 @@
-import logger
 import torch
 import torch.nn as nn
 import torch.nn.utils as utils
@@ -183,11 +182,10 @@ class ASFFNet(nn.Module):
         return recon_img
 
 
-def tensor_to_img(tenser):
-    save_out = tenser * 0.5 + 0.5
-    save_out = save_out.squeeze(0).permute(1, 2, 0).flip(2)  # RGB->BGR
-    save_out = np.clip(save_out.float().cpu().numpy(), 0, 1) * 255.0
-    return save_out
+def tensor_to_img(tensor):
+    img_out = tensor * 0.5 + 0.5
+    img_out = torch.clip(img_out, 0 , 1) * 255.0
+    return img_out
 
 
 # weight init
@@ -213,7 +211,7 @@ if __name__ == '__main123123__':
 
 if __name__ == '__main__':
     from DataSet import ASFFDataSet
-    import DirectoryUtils
+    from util import DirectoryUtils
     from constant import *
     from torch.utils.data import DataLoader
     import torch.optim as optim
@@ -233,6 +231,10 @@ if __name__ == '__main__':
     test_data_set_path = DirectoryUtils.select_file("test data list csv")
     wls_weight_path = DirectoryUtils.select_file("wls weight path")
 
+    # train_data_set_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\train_data_test_ver.csv"
+    # test_data_set_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\train_data_test_ver.csv"
+    # wls_weight_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\tem\WLS가중치 테스트 버전\weight_tensor15.pth"
+
     train_data_list = DirectoryUtils.read_list_from_csv(train_data_set_path)
     test_data_list = DirectoryUtils.read_list_from_csv(test_data_set_path)
     asff_train_data = ASFFDataSet(train_data_list, wls_weight_path)
@@ -240,13 +242,13 @@ if __name__ == '__main__':
 
     train_dataloader = DataLoader(
         asff_train_data,  # 위에서 생성한 데이터 셋
-        batch_size=batch_size,
+        batch_size=g_batch_size,
         shuffle=True,  # 데이터들의 순서는 섞어서 분할
     )
 
     test_dataloader = DataLoader(
         asff_test_data,  # 위에서 생성한 데이터 셋
-        batch_size=batch_size,
+        batch_size=g_batch_size,
         shuffle=True,  # 데이터들의 순서는 섞어서 분할
     )
 
@@ -261,11 +263,14 @@ if __name__ == '__main__':
         asffnetD.train()
         mem_snp_num = 1
         for data in tqdm(train_dataloader, desc='Processing Batches'):
-            I_h = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
+            F_r = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
                            data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
+            I_h = tensor_to_img(F_r)
+            I_truth = tensor_to_img(data['hp_img_tensor'])
+
             fake_validity = asffnetD(I_h.detach())
-            real_validity = asffnetD(data['hp_img_tensor'].detach())
-            G_loss = Loss.ASFFGLoss(I_h, data['hp_img_tensor'], fake_validity.detach())
+            real_validity = asffnetD(I_truth.detach())
+            G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
             optimizerG.zero_grad()
             G_loss.backward()
             optimizerG.step()

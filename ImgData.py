@@ -4,7 +4,7 @@ import torch
 import cv2
 import os
 from torchvision.transforms.functional import normalize
-from DirectoryUtils import get_land_data_path
+from util.DirectoryUtils import get_land_data_path
 
 
 class ImgData:

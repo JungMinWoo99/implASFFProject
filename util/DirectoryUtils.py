@@ -194,24 +194,3 @@ def get_land_data_path(img_path):
     return re.sub(r'img', r'land', re.sub(r'png', r'npy', img_path))
 
 
-# 현재 디렉토리
-if __name__ == '__main123123__':
-    current_directory = select_folder()
-    delete_small_imgset(current_directory)
-    split_sub_folder(current_directory)
-    rename_folders_in_directory(current_directory)
-    rename_file_in_directory(current_directory)
-    make_testcase_list()
-    #img_list = read_img_list_from_csv(os.path.join('./', img_list_csv_file_name))
-    #print(img_list)
-
-if __name__ == '__main123123__':
-    current_directory = r"C:\Users\minwoo\code_depository\DataSet\ProjectDataSet"
-    fix_filename_in_directory(current_directory)
-
-if __name__ == '__main123123123__':
-    current_directory = r"C:\Users\minwoo\code_depository\DataSet\ProjectDataSet\img"
-    del_file(current_directory)
-
-if __name__ == '__main__':
-    make_testcase_list()

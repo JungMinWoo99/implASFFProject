@@ -138,7 +138,7 @@ class DCGANDiscriminator(nn.Module):
 
 if __name__ == '__main123__':
     from DataSet import TruthImgDataSet
-    import DirectoryUtils
+    from util import DirectoryUtils
     from constant import *
     from torch.utils.data import DataLoader
     import torch.optim as optim
@@ -159,13 +159,13 @@ if __name__ == '__main123__':
 
     train_dataloader = DataLoader(
         d_train_data,  # 위에서 생성한 데이터 셋
-        batch_size=batch_size,
+        batch_size=g_batch_size,
         shuffle=True,  # 데이터들의 순서는 섞어서 분할
     )
 
     test_dataloader = DataLoader(
         d_test_data,  # 위에서 생성한 데이터 셋
-        batch_size=batch_size,
+        batch_size=g_batch_size,
         shuffle=True,  # 데이터들의 순서는 섞어서 분할
     )
 

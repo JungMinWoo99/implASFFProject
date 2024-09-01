@@ -2,7 +2,7 @@ import torch
 
 default_device = torch.device('cuda')
 
-batch_size = 8
+g_batch_size = 8
 
 g_output_img_size = 256
 g_landmarks_num = 68

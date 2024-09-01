@@ -1,15 +1,7 @@
 from constant import *
 import torch
-from torch import nn
 import torch.optim as optim
-import cv2
 import numpy as np
-import os.path as osp
-import time
-import argparse
-import os
-import json
-from ImgData import ImgData
 
 
 class WLS:
@@ -31,7 +23,7 @@ class WLS:
             inverse_matrix = torch.inverse(inner_matrix)
             A = L_d @ self.w_diag @ h_L_k.transpose(0, 1) @ inverse_matrix
             error = A @ h_L_k - L_d
-            affine_distance = torch.sum(self.w * torch.norm(error, dim=0) ** 2.0)
+            affine_distance = torch.sum(self.w * (torch.linalg.norm(error, dim=0) ** 2.0))
             distance_list.append(affine_distance)
         shortest_distance = min(distance_list)
         min_index = distance_list.index(shortest_distance)
@@ -52,7 +44,7 @@ def cal_sim(lq_landmarks, ref_landmark):
     # ref landmark process
     Ref_Ab = np.insert(ref_landmark, 2, 1, -1)
     Ref_Ab_eye = np.concatenate([Ref_Ab[17:27, :], Ref_Ab[36:48, :]], axis=0)  # eyebrow+eye (22, 3)
-    Ref_Ab_mouth = Ref_Ab[48:, :]  # mouth #(20,2)
+    Ref_Ab_mouth = Ref_Ab[48:, :]  # mouth #(20,3)
 
     # eye
     result_Ab_eye = np.dot(np.dot(np.linalg.inv(np.dot(Ref_Ab_eye.T, Ref_Ab_eye)), Ref_Ab_eye.T),
@@ -71,12 +63,12 @@ def cal_sim(lq_landmarks, ref_landmark):
 
 if __name__ == '__main__':
     from DataSet import WLSDataSet
-    import DirectoryUtils
+    from util import DirectoryUtils
     from torch.utils.data import DataLoader
     from tqdm import tqdm
 
-    train_data_set_path = DirectoryUtils.select_file()
-    test_data_set_path = DirectoryUtils.select_file()
+    train_data_set_path = DirectoryUtils.select_file("train data list csv")
+    test_data_set_path = DirectoryUtils.select_file("test data list csv")
     wls = WLS()
     train_data_list = DirectoryUtils.read_list_from_csv(train_data_set_path)
     test_data_list = DirectoryUtils.read_list_from_csv(test_data_set_path)
@@ -102,12 +94,12 @@ if __name__ == '__main__':
         collate_fn=custom_collate_fn
     )
 
-    mode = 'run'
+    mode = 'train'
     if mode == 'train':
         optimizer = optim.Adam([wls.w], lr=0.0001)
 
         loss_list = []
-        epoch = 20
+        epoch = 50
         for e in range(epoch):
             for data in tqdm(train_dataloader, desc='Processing Batches'):
                 optimizer.zero_grad()

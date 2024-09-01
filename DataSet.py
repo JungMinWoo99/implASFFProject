@@ -85,7 +85,7 @@ class TruthImgDataSet(Dataset):
 
 
 if __name__ == '__main__':
-    import DirectoryUtils
+    from util import DirectoryUtils
 
     train_data_set_path = DirectoryUtils.select_file("train data list csv")
     wls_weight_path = DirectoryUtils.select_file("wls weight path")

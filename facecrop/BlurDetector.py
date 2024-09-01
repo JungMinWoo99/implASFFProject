@@ -134,11 +134,11 @@ if __name__ == '__main1__':
 
 if __name__ == '__main2__':
     d = BlurImgFilter()
-    find_and_process_img_file(start_dir="E:/code_depository/depository_python/FSR_project/ImpASFF/FaceCrop/CASIA-WebFace_crop", processor=d, extension="jpg")
+    find_and_process_img_file(start_dir="E:/code_depository/depository_python/FSR_project/ImpASFF/facecrop/CASIA-WebFace_crop", processor=d, extension="jpg")
     print("all: {}".format(d.img_count))
     print("del: {}".format(d.deleted_img_count))
 
 
 if __name__ == '__main__':
     g = GrayImgFilter()
-    find_and_process_img_file(start_dir="E:/code_depository/depository_python/FSR_project/ImpASFF/FaceCrop/CASIA-WebFace_crop_sort2", processor=g, extension="jpg")
+    find_and_process_img_file(start_dir="E:/code_depository/depository_python/FSR_project/ImpASFF/facecrop/CASIA-WebFace_crop_sort2", processor=g, extension="jpg")

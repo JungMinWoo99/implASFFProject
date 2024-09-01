@@ -1,5 +1,5 @@
 import random
-import DirectoryUtils
+from util import DirectoryUtils
 import csv
 
 # CSV 파일을 읽어옵니다.
@@ -15,10 +15,10 @@ df2 = case_list[-test_data_num:]  # 두 번째 절반
 
 # 나눈 데이터를 각각 새로운 CSV 파일로 저장합니다.
 # CSV 파일로 저장
-with open('train_data.csv', 'w', newline='') as file:
+with open('../train_data.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerows(df1)
-with open('test_data.csv', 'w', newline='') as file:
+with open('../test_data.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerows(df2)
 
