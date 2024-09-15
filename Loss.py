@@ -79,9 +79,14 @@ def ASFFGLoss(I_h, I_truth, I_h_D_output):
     G_adv_loss = ASFFadvGLoss(I_h_D_output)
     G_mse_loss = ASFFMSELoss(I_h, I_truth)
 
-    G_loss = tradeoff_parm_style * G_style_loss + tradeoff_parm_perc * G_perc_loss + tradeoff_parm_adv * G_adv_loss + tradeoff_parm_mse * G_mse_loss
-    #print("\nstyle loss: " + str((tradeoff_parm_style * G_style_loss).item()) + "\nperc loss: " + str((tradeoff_parm_perc * G_perc_loss).item()) + "\nadv loss: " + str((tradeoff_parm_adv * G_adv_loss).item()) + "\nmse loss: " + str((tradeoff_parm_mse * G_mse_loss).item()))
-    return G_loss
+    G_total_loss = tradeoff_parm_style * G_style_loss + tradeoff_parm_perc * G_perc_loss + tradeoff_parm_adv * G_adv_loss + tradeoff_parm_mse * G_mse_loss
+    return {
+        "mse_loss": G_mse_loss,
+        "perc_loss": G_perc_loss,
+        "style_loss": G_style_loss,
+        "adv_loss": G_adv_loss,
+        "total_loss": G_total_loss
+    }
 
 
 def ASFFDLoss(I_h_D_output, I_truth_D_output):

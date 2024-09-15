@@ -184,7 +184,7 @@ class ASFFNet(nn.Module):
 
 def tensor_to_img(tensor):
     img_out = tensor * 0.5 + 0.5
-    img_out = torch.clip(img_out, 0 , 1) * 255.0
+    img_out = torch.clip(img_out, 0, 1) * 255.0
     return img_out
 
 
@@ -198,18 +198,8 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0.0)
 
 
-if __name__ == '__main123123__':
-    import WLS
-
-    img_d = WLS.ImgData("./sample/i1.png")
-    img_g = WLS.ImgData("./sample/o1.png")
-    tem_bin_img = torch.ones((1, 1, 256, 256))
-    asffnetG = ASFFNet()
-    ret = asffnetG.forward(img_d.img_tensor, img_g.img_tensor, tem_bin_img, img_d.img_landmarks_tensor,
-                           img_g.img_landmarks_tensor)
-    print(ret.size)
-
 if __name__ == '__main__':
+    import os
     from DataSet import ASFFDataSet
     from util import DirectoryUtils
     from constant import *
@@ -218,11 +208,12 @@ if __name__ == '__main__':
     from tqdm import tqdm
     import Loss
     from ASFFDiscriminator import SNGANDiscriminator
+    from ASFFDiscriminator import DCGANDiscriminator
 
     torch.autograd.set_detect_anomaly(True)
 
     asffnetG = ASFFNet().to(default_device)
-    asffnetD = SNGANDiscriminator().to(default_device)
+    asffnetD = DCGANDiscriminator().to(default_device)
 
     asffnetG.apply(weights_init)
     asffnetD.apply(weights_init)
@@ -230,10 +221,6 @@ if __name__ == '__main__':
     train_data_set_path = DirectoryUtils.select_file("train data list csv")
     test_data_set_path = DirectoryUtils.select_file("test data list csv")
     wls_weight_path = DirectoryUtils.select_file("wls weight path")
-
-    # train_data_set_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\train_data_test_ver.csv"
-    # test_data_set_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\train_data_test_ver.csv"
-    # wls_weight_path = r"C:\Users\minwoo\code_depository\python\implASFFProject\tem\WLS가중치 테스트 버전\weight_tensor15.pth"
 
     train_data_list = DirectoryUtils.read_list_from_csv(train_data_set_path)
     test_data_list = DirectoryUtils.read_list_from_csv(test_data_set_path)
@@ -255,8 +242,6 @@ if __name__ == '__main__':
     optimizerD = optim.Adam(asffnetD.parameters(), lr=0.0002, betas=(0.5, 0.999))
     optimizerG = optim.Adam(asffnetG.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
-    G_loss_list = []
-    D_loss_list = []
     epoch = 10
     for e in range(epoch):
         asffnetG.train()
@@ -272,7 +257,7 @@ if __name__ == '__main__':
             real_validity = asffnetD(I_truth.detach())
             G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
             optimizerG.zero_grad()
-            G_loss.backward()
+            G_loss["total_loss"].backward()
             optimizerG.step()
 
             D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
@@ -285,7 +270,13 @@ if __name__ == '__main__':
         with torch.no_grad():
             asffnetG.eval()
             asffnetD.eval()
-            G_loss_sum = 0
+            G_loss_sum_dict = {
+                "mse_loss": 0,
+                "perc_loss": 0,
+                "style_loss": 0,
+                "adv_loss": 0,
+                "total_loss": 0
+            }
             D_loss_sum = 0
             for data in tqdm(test_dataloader, desc='calculate loss'):
                 I_h = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
@@ -295,13 +286,29 @@ if __name__ == '__main__':
                 G_loss = Loss.ASFFGLoss(I_h, data['hp_img_tensor'], fake_validity)
                 D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
 
-                G_loss_sum += G_loss.item()
+                for key, value in G_loss_sum_dict.items():
+                    G_loss_sum_dict[key] += G_loss[key].item()
                 D_loss_sum += D_loss.item()
 
-            G_loss_avg = G_loss_sum / len(asff_test_data)
+            G_loss_avg = {
+                "mse_loss": 0,
+                "perc_loss": 0,
+                "style_loss": 0,
+                "adv_loss": 0,
+                "total_loss": 0
+            }
+            D_loss_avg = 0
+
+            for key, value in G_loss_sum_dict.items():
+                G_loss_avg[key] = G_loss_sum_dict[key] / len(asff_test_data)
             D_loss_avg = D_loss_sum / len(asff_test_data)
-            G_loss_list.append(G_loss_avg)
-            D_loss_list.append(D_loss_avg)
+
+            print("\nmse_loss: " + str((tradeoff_parm_mse * G_loss_avg["mse_loss"])) + \
+                  "\nperc_loss: " + str((tradeoff_parm_perc * G_loss_avg["perc_loss"])) + \
+                  "\nstyle_loss: " + str((tradeoff_parm_style * G_loss_avg["style_loss"])) + \
+                  "\nadv_loss: " + str((tradeoff_parm_adv * G_loss_avg["adv_loss"])) + \
+                  "\ntotal_loss: " + str((tradeoff_parm_adv * G_loss_avg["total_loss"])))
+
             # 가중치 텐서 저장
             torch.save({
                 'epoch': e + 1,
@@ -313,42 +320,6 @@ if __name__ == '__main__':
                 'd_loss': D_loss_avg
             }, 'asff_train_log{}.pth'.format(e + 1))
 
-    import matplotlib.pyplot as plt
+    from util.PrintTrainLog import *
 
-    # 꺾은선 그래프 그리기
-    plt.plot([i for i in range(1, epoch + 1)], G_loss_list, marker='o', linestyle='-')
-
-    # 각 데이터 포인트에 값 표시
-    for i, value in enumerate(G_loss_list):
-        plt.plot([i for i in range(1, epoch + 1)], G_loss_list, marker='o', linestyle='-')
-        plt.annotate(f'{value:.5f}', (i, G_loss_list[i]), textcoords="offset points", xytext=(0, 10), ha='center')
-
-    # 그래프 제목과 축 레이블
-    plt.title('g loss avg')
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-
-    # 그래프 저장
-    plt.savefig('g_loss.png')
-
-    # 그래프 보여주기
-    plt.show()
-
-    # 꺾은선 그래프 그리기
-    plt.plot([i for i in range(1, epoch + 1)], D_loss_list, marker='o', linestyle='-')
-
-    # 각 데이터 포인트에 값 표시
-    for i, value in enumerate(D_loss_list):
-        plt.plot([i for i in range(1, epoch + 1)], D_loss_list, marker='o', linestyle='-')
-        plt.annotate(f'{value:.5f}', (i, D_loss_list[i]), textcoords="offset points", xytext=(0, 10), ha='center')
-
-    # 그래프 제목과 축 레이블
-    plt.title('d loss avg')
-    plt.xlabel('epoch')
-    plt.ylabel('loss')
-
-    # 그래프 저장
-    plt.savefig('d_loss.png')
-
-    # 그래프 보여주기
-    plt.show()
+    print_asff_log()
