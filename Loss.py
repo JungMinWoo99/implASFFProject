@@ -46,13 +46,13 @@ def ASFFStyleLoss(I_h_fea_list, I_truth_fea_list):
         (b, n, h, w) = tensor.size()
         features = tensor.view(b, n, w * h)
         features_transpose = features.transpose(1, 2)
-        return features.bmm(features_transpose)
+        return features.bmm(features_transpose)/(n*h*w)
 
     def cal_diff(I_h_fea: torch.Tensor, I_truth_fea: torch.Tensor):
         (b, n, h, w) = I_h_fea.size()
         I_h_gram = ToGramMatrix(I_h_fea)
         I_truth_gram = ToGramMatrix(I_truth_fea)
-        ret = (torch.sum((I_h_gram - I_truth_gram) ** 2))/(b*n*h*w)
+        ret = torch.sum((I_h_gram - I_truth_gram) ** 2)
         return ret
 
     ret = 0

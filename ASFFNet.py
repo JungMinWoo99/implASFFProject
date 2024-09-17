@@ -205,20 +205,21 @@ if __name__ == '__main__':
     from util import DirectoryUtils
     from constant import *
     from torch.utils.data import DataLoader
+    from torch.utils.data import random_split
     import torch.optim as optim
     from tqdm import tqdm
     import Loss
     from ASFFDiscriminator import SNGANDiscriminator
     from ASFFDiscriminator import DCGANDiscriminator
 
-    # 첫 번째 로그 파일 설정
+    use_subset = True
+
     train_logger = logging.getLogger('train_logger')
     train_logger.setLevel(logging.INFO)
     file_handler1 = logging.FileHandler('train.log')
     file_handler1.setFormatter(logging.Formatter('%(message)s'))
     train_logger.addHandler(file_handler1)
 
-    # 두 번째 로그 파일 설정
     eval_logger = logging.getLogger('eval_logger')
     eval_logger.setLevel(logging.INFO)
     file_handler2 = logging.FileHandler('eval.log')
@@ -241,6 +242,22 @@ if __name__ == '__main__':
     test_data_list = DirectoryUtils.read_list_from_csv(test_data_set_path)
     asff_train_data = ASFFDataSet(train_data_list, wls_weight_path)
     asff_test_data = ASFFDataSet(test_data_list, wls_weight_path)
+
+    if use_subset:
+        # 훈련 데이터 중 30%만 사용
+        train_size = int(0.3 * len(asff_train_data))
+        val_size = len(asff_train_data) - train_size
+
+        # 데이터 분할
+        asff_train_data, _ = random_split(asff_train_data, [train_size, val_size])
+
+        # 테스트 데이터 중 30%만 사용
+        train_size = int(0.3 * len(asff_test_data))
+        val_size = len(asff_test_data) - train_size
+
+        # 데이터 분할
+        asff_test_data, _ = random_split(asff_test_data, [train_size, val_size])
+
 
     train_dataloader = DataLoader(
         asff_train_data,  # 위에서 생성한 데이터 셋
