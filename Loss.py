@@ -9,9 +9,12 @@ from constant import *
 VGGFaceModel = PreTrainedVGGFace.vgg_m_face_bn_dag("vgg_m_face_bn_dag.pth")
 resize_transform = Resize((VGGFaceModel.meta['imageSize'][0], VGGFaceModel.meta['imageSize'][1]))
 
+mse_loss = torch.nn.MSELoss()
+perc_loss = torch.nn.MSELoss()
+style_loss = torch.nn.MSELoss()
+
 def ASFFMSELoss(I_h, I_truth):
-    mse = torch.mean((I_h - I_truth) ** 2)
-    return mse
+    return mse_loss(I_h, I_truth)
 
 
 def GetVGGFaceFea(I_h, I_truth):
@@ -28,8 +31,8 @@ def GetVGGFaceFea(I_h, I_truth):
 
 def ASFFPercLoss(I_h_fea_list, I_truth_fea_list):
     def cal_diff(I_h_fea: torch.Tensor, I_truth_fea: torch.Tensor):
-        norm = torch.mean(torch.linalg.norm(I_h_fea - I_truth_fea) ** 2)
-        return norm
+        ret = perc_loss(I_h_fea, I_truth_fea)
+        return ret
 
     ret = 0
     for I_h_fea, I_truth_fea in zip(I_h_fea_list, I_truth_fea_list):
@@ -38,24 +41,23 @@ def ASFFPercLoss(I_h_fea_list, I_truth_fea_list):
 
 
 def ASFFStyleLoss(I_h_fea_list, I_truth_fea_list):
+
     def ToGramMatrix(tensor):
-        shape = list(tensor.shape)
-        new_shape = shape[:-2] + [shape[-2] * shape[-1]]
-        fea_2d = torch.reshape(tensor, new_shape)
-        gram = fea_2d @ fea_2d.transpose(1, 0)
-        return gram
+        (b, n, h, w) = tensor.size()
+        features = tensor.view(b, n, w * h)
+        features_transpose = features.transpose(1, 2)
+        return features.bmm(features_transpose)
 
     def cal_diff(I_h_fea: torch.Tensor, I_truth_fea: torch.Tensor):
+        (b, n, h, w) = I_h_fea.size()
         I_h_gram = ToGramMatrix(I_h_fea)
         I_truth_gram = ToGramMatrix(I_truth_fea)
-        norm = torch.mean((I_h_gram - I_truth_gram) ** 2)
-        return norm
+        ret = (torch.sum((I_h_gram - I_truth_gram) ** 2))/(b*n*h*w)
+        return ret
 
     ret = 0
     for I_h_fea, I_truth_fea in zip(I_h_fea_list, I_truth_fea_list):
-        batch_size = I_h_fea.shape[0]
-        for b in range(batch_size):
-            ret = ret + cal_diff(I_h_fea[b], I_truth_fea[b])/batch_size
+        ret = ret + cal_diff(I_h_fea, I_truth_fea)
     return ret
 
 

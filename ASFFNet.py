@@ -200,6 +200,7 @@ def weights_init(m):
 
 if __name__ == '__main__':
     import os
+    import logging
     from DataSet import ASFFDataSet
     from util import DirectoryUtils
     from constant import *
@@ -209,6 +210,20 @@ if __name__ == '__main__':
     import Loss
     from ASFFDiscriminator import SNGANDiscriminator
     from ASFFDiscriminator import DCGANDiscriminator
+
+    # 첫 번째 로그 파일 설정
+    train_logger = logging.getLogger('train_logger')
+    train_logger.setLevel(logging.INFO)
+    file_handler1 = logging.FileHandler('train.log')
+    file_handler1.setFormatter(logging.Formatter('%(message)s'))
+    train_logger.addHandler(file_handler1)
+
+    # 두 번째 로그 파일 설정
+    eval_logger = logging.getLogger('eval_logger')
+    eval_logger.setLevel(logging.INFO)
+    file_handler2 = logging.FileHandler('eval.log')
+    file_handler2.setFormatter(logging.Formatter('%(message)s'))
+    eval_logger.addHandler(file_handler2)
 
     torch.autograd.set_detect_anomaly(True)
 
@@ -256,6 +271,14 @@ if __name__ == '__main__':
             fake_validity = asffnetD(I_h.detach())
             real_validity = asffnetD(I_truth.detach())
             G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
+
+            train_logger.info("\n train loss {}".format(e) + \
+                         "\nmse_loss: " + str((tradeoff_parm_mse * G_loss["mse_loss"])) + \
+                         "\nperc_loss: " + str((tradeoff_parm_perc * G_loss["perc_loss"])) + \
+                         "\nstyle_loss: " + str((tradeoff_parm_style * G_loss["style_loss"])) + \
+                         "\nadv_loss: " + str((tradeoff_parm_adv * G_loss["adv_loss"])) + \
+                         "\ntotal_loss: " + str((G_loss["total_loss"])))
+
             optimizerG.zero_grad()
             G_loss["total_loss"].backward()
             optimizerG.step()
@@ -290,6 +313,13 @@ if __name__ == '__main__':
                     G_loss_sum_dict[key] += G_loss[key].item()
                 D_loss_sum += D_loss.item()
 
+                eval_logger.info("\n eval loss {}".format(e) + \
+                             "\nmse_loss: " + str((tradeoff_parm_mse * G_loss["mse_loss"])) + \
+                             "\nperc_loss: " + str((tradeoff_parm_perc * G_loss["perc_loss"])) + \
+                             "\nstyle_loss: " + str((tradeoff_parm_style * G_loss["style_loss"])) + \
+                             "\nadv_loss: " + str((tradeoff_parm_adv * G_loss["adv_loss"])) + \
+                             "\ntotal_loss: " + str((G_loss["total_loss"])))
+
             G_loss_avg = {
                 "mse_loss": 0,
                 "perc_loss": 0,
@@ -307,7 +337,7 @@ if __name__ == '__main__':
                   "\nperc_loss: " + str((tradeoff_parm_perc * G_loss_avg["perc_loss"])) + \
                   "\nstyle_loss: " + str((tradeoff_parm_style * G_loss_avg["style_loss"])) + \
                   "\nadv_loss: " + str((tradeoff_parm_adv * G_loss_avg["adv_loss"])) + \
-                  "\ntotal_loss: " + str((tradeoff_parm_adv * G_loss_avg["total_loss"])))
+                  "\ntotal_loss: " + str((G_loss_avg["total_loss"])))
 
             # 가중치 텐서 저장
             torch.save({

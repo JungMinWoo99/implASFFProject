@@ -5,3 +5,4 @@ __pycache__/
 WLS가중치 테스트 버전/
 .idea/
 tem/
+*.log

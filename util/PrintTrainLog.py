@@ -10,8 +10,8 @@ def print_asff_log():
     asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(idx + 1)
     while os.path.exists(asffnet_checkpoint_path):
         checkpoint = torch.load(asffnet_checkpoint_path)
-        G_loss_list.append(checkpoint['g_loss'])
-        D_loss_list.append(checkpoint['d_loss'])
+        G_loss_list.append(checkpoint['g_loss']["total_loss"])
+        D_loss_list.append(checkpoint['d_loss']["total_loss"])
         idx += 1
         asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(idx + 1)
 
