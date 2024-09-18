@@ -14,7 +14,8 @@ perc_loss = torch.nn.MSELoss()
 style_loss = torch.nn.MSELoss()
 
 def ASFFMSELoss(I_h, I_truth):
-    return mse_loss(I_h, I_truth)
+    ret = mse_loss(I_h, I_truth)
+    return ret
 
 
 def GetVGGFaceFea(I_h, I_truth):
@@ -64,7 +65,7 @@ def ASFFStyleLoss(I_h_fea_list, I_truth_fea_list):
 def ASFFadvDLoss(I_h_D_output, I_truth_D_output):
     I_truth_E = torch.mean(torch.minimum(torch.zeros_like(I_truth_D_output), -1 + I_truth_D_output))
     I_h_E = torch.mean(torch.minimum(torch.zeros_like(I_h_D_output), -1 - I_h_D_output))
-    return I_truth_E + I_h_E
+    return -(I_truth_E + I_h_E)
 
 
 def ASFFadvGLoss(I_h_D_output):
@@ -73,13 +74,15 @@ def ASFFadvGLoss(I_h_D_output):
 
 
 def ASFFGLoss(I_h, I_truth, I_h_D_output):
+    f_h = normalize(I_h / 255.0, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    f_truth = normalize(I_truth / 255.0, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     resize_I_h = resize_transform(I_h)
     resize_I_truth = resize_transform(I_truth)
     I_h_fea_list, I_truth_fea_list = GetVGGFaceFea(resize_I_h, resize_I_truth)
     G_style_loss = ASFFStyleLoss(I_h_fea_list, I_truth_fea_list)
     G_perc_loss = ASFFPercLoss(I_h_fea_list, I_truth_fea_list)
     G_adv_loss = ASFFadvGLoss(I_h_D_output)
-    G_mse_loss = ASFFMSELoss(I_h, I_truth)
+    G_mse_loss = ASFFMSELoss(f_h, f_truth)
 
     G_total_loss = tradeoff_parm_style * G_style_loss + tradeoff_parm_perc * G_perc_loss + tradeoff_parm_adv * G_adv_loss + tradeoff_parm_mse * G_mse_loss
     return {

@@ -197,7 +197,6 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0.0)
 
-
 if __name__ == '__main__':
     import os
     import logging
@@ -274,20 +273,25 @@ if __name__ == '__main__':
     optimizerD = optim.Adam(asffnetD.parameters(), lr=0.0002, betas=(0.5, 0.999))
     optimizerG = optim.Adam(asffnetG.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
+    def get_loss(data):
+        F_r = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
+                       data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
+        I_h = tensor_to_img(F_r)
+        I_truth = tensor_to_img(data['hp_img_tensor'])
+
+        fake_validity = asffnetD(I_h.detach())
+        real_validity = asffnetD(I_truth.detach())
+        G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
+        D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
+        return G_loss, D_loss
+
     epoch = 10
     for e in range(epoch):
         asffnetG.train()
         asffnetD.train()
         mem_snp_num = 1
         for data in tqdm(train_dataloader, desc='Processing Batches'):
-            F_r = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
-                           data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
-            I_h = tensor_to_img(F_r)
-            I_truth = tensor_to_img(data['hp_img_tensor'])
-
-            fake_validity = asffnetD(I_h.detach())
-            real_validity = asffnetD(I_truth.detach())
-            G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
+            G_loss, D_loss = get_loss(data)
 
             train_logger.info("\n train loss {}".format(e) + \
                          "\nmse_loss: " + str((tradeoff_parm_mse * G_loss["mse_loss"])) + \
@@ -300,7 +304,6 @@ if __name__ == '__main__':
             G_loss["total_loss"].backward()
             optimizerG.step()
 
-            D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
             optimizerD.zero_grad()
             D_loss.backward()
             optimizerD.step()
@@ -319,12 +322,7 @@ if __name__ == '__main__':
             }
             D_loss_sum = 0
             for data in tqdm(test_dataloader, desc='calculate loss'):
-                I_h = asffnetG(data['lp_img_tensor'], data['g_img_tensor'], data['lp_land_bin_img_tensor'],
-                               data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
-                fake_validity = asffnetD(I_h)
-                real_validity = asffnetD(data['hp_img_tensor'])
-                G_loss = Loss.ASFFGLoss(I_h, data['hp_img_tensor'], fake_validity)
-                D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
+                G_loss, D_loss = get_loss(data)
 
                 for key, value in G_loss_sum_dict.items():
                     G_loss_sum_dict[key] += G_loss[key].item()
