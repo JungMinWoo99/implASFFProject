@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import Dataset
 from ImgData import ImgData
-from WLS import WLS
+from model.WLS import WLS
 
 
 class WLSDataSet(Dataset):

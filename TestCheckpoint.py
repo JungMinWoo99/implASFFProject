@@ -1,7 +1,5 @@
-from constant import *
-import util.DirectoryUtils as DirectoryUtils
 import cv2
-from ASFFNet import *
+from model.ASFFNet import *
 from DataSet import ASFFDataSet
 import os
 

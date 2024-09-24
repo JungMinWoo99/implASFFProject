@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import cv2
-from face_crop_plus import Cropper
 import glob
 
 def is_gray_img(image):

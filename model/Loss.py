@@ -1,12 +1,10 @@
-import torch
-
 import PreTrainedVGGFace
 from torchvision.transforms.functional import normalize
 from torchvision.transforms import Resize
 from constant import *
 
 # VGGFaceModel = PreTrainedVGGFace.vgg_face_dag("vgg_face_dag.pth")
-VGGFaceModel = PreTrainedVGGFace.vgg_m_face_bn_dag("vgg_m_face_bn_dag.pth")
+VGGFaceModel = PreTrainedVGGFace.vgg_m_face_bn_dag("../vgg_m_face_bn_dag.pth")
 resize_transform = Resize((VGGFaceModel.meta['imageSize'][0], VGGFaceModel.meta['imageSize'][1]))
 
 mse_loss = torch.nn.MSELoss()

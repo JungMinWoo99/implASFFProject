@@ -1,10 +1,8 @@
-import torch
 import torch.nn as nn
 import torch.nn.utils as utils
 import constant
 import MLS
 import AdaIN
-import numpy as np
 
 
 class DilateResBlock(nn.Module):
@@ -208,20 +206,19 @@ if __name__ == '__main__':
     import torch.optim as optim
     from tqdm import tqdm
     import Loss
-    from ASFFDiscriminator import SNGANDiscriminator
     from ASFFDiscriminator import DCGANDiscriminator
 
     use_subset = True
 
     train_logger = logging.getLogger('train_logger')
     train_logger.setLevel(logging.INFO)
-    file_handler1 = logging.FileHandler('train.log')
+    file_handler1 = logging.FileHandler('../train.log')
     file_handler1.setFormatter(logging.Formatter('%(message)s'))
     train_logger.addHandler(file_handler1)
 
     eval_logger = logging.getLogger('eval_logger')
     eval_logger.setLevel(logging.INFO)
-    file_handler2 = logging.FileHandler('eval.log')
+    file_handler2 = logging.FileHandler('../eval.log')
     file_handler2.setFormatter(logging.Formatter('%(message)s'))
     eval_logger.addHandler(file_handler2)
 

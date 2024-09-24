@@ -4,7 +4,15 @@ import shutil
 import csv
 import re
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
+
+
+def ask_load_file(title="load file?"):
+    response = messagebox.askquestion(title, title)
+    if response == 'yes':
+        return True
+    else:
+        return False
 
 
 def select_folder(title="Select Folder"):
