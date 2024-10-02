@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.utils as utils
 import constant
@@ -147,10 +148,10 @@ class ReconstructionBlock(nn.Module):
             DilateResBlock(128, 3, 1, 1),
             DilateResBlock(128, 3, 1, 1),
             nn.PixelShuffle(2),
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=padding_size, bias=True),
-            DilateResBlock(64, 3, 1, 1),
-            DilateResBlock(64, 3, 1, 1),
-            nn.Conv2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=padding_size, bias=True),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=padding_size, bias=True),
+            DilateResBlock(32, 3, 1, 1),
+            DilateResBlock(32, 3, 1, 1),
+            nn.Conv2d(in_channels=32, out_channels=3, kernel_size=3, stride=1, padding=padding_size, bias=True),
             nn.Tanh()
         )
 

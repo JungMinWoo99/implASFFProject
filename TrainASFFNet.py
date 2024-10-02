@@ -10,6 +10,7 @@ import model.Loss as Loss
 from model.ASFFDiscriminator import DCGANDiscriminator
 from model.ASFFNet import ASFFNet, weights_init, tensor_to_img
 from util.PrintTrainLog import print_asff_log
+import os.path
 
 use_subset = True
 
@@ -27,8 +28,22 @@ eval_logger.addHandler(file_handler2)
 
 torch.autograd.set_detect_anomaly(True)
 
+file_num = 0
 asffnetG = ASFFNet().to(default_device)
 asffnetD = DCGANDiscriminator().to(default_device)
+load_checkpoint = DirectoryUtils.ask_load_file("load checkpoint?")
+if load_checkpoint:
+    asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(file_num)
+    while os.path.exists(asffnet_checkpoint_path):
+        file_num += 1
+        asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(file_num)
+    file_num -= 1
+    asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(file_num)
+    print('load ' + asffnet_checkpoint_path)
+    checkpoint = torch.load(asffnet_checkpoint_path)
+    asffnetG.load_state_dict(checkpoint['gen_state_dict'])
+    asffnetD.load_state_dict(checkpoint['dis_state_dict'])
+    file_num += 1
 
 asffnetG.apply(weights_init)
 asffnetD.apply(weights_init)
@@ -81,7 +96,7 @@ def get_loss(data):
 
     fake_validity = asffnetD(I_h.detach())
     real_validity = asffnetD(I_truth.detach())
-    G_loss = Loss.ASFFGLoss(I_h, I_truth, fake_validity.detach())
+    G_loss = Loss.ASFFGLoss_test(I_h, I_truth, fake_validity.detach())
     D_loss = Loss.ASFFDLoss(fake_validity, real_validity)
     return G_loss, D_loss
 
@@ -157,13 +172,14 @@ for e in range(epoch):
 
         # 가중치 텐서 저장
         torch.save({
-            'epoch': e + 1,
+            'epoch': file_num,
             'gen_state_dict': asffnetG.state_dict(),
             'dis_state_dict': asffnetD.state_dict(),
             'gen_optimizer': optimizerG.state_dict(),
             'dis_optimizer': optimizerD.state_dict(),
             'g_loss': G_loss_avg,
             'd_loss': D_loss_avg
-        }, 'asff_train_log{}.pth'.format(e + 1))
+        }, 'asff_train_log{}.pth'.format(file_num))
+        file_num+=1
 
 print_asff_log()

@@ -34,7 +34,7 @@ class ASFFDataSet(Dataset):
     def __init__(self, test_case_list, wls_weight_path):
         self.test_case_list = test_case_list
         self.g_img_select_model = WLS()
-        self.g_img_select_model.w = torch.load(wls_weight_path)
+        self.g_img_select_model.w = torch.load(wls_weight_path)['wls_weight']
 
     def __getitem__(self, index):
         lp_img = ImgData(self.test_case_list[index][0])
