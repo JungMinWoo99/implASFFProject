@@ -26,19 +26,19 @@ def print_wls_log():
     plt.ylabel('loss')
 
     # 그래프 저장
-    plt.savefig('wls_loss.png')
+    plt.savefig('wls_loss.jpg')
 
-def print_asff_log():
+def print_asff_log(log_dir_path = './'):
     idx = 0
     G_loss_list = []
     D_loss_list = []
-    asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(idx + 1)
+    asffnet_checkpoint_path = log_dir_path + 'asff_train_log{}.pth'.format(idx)
     while os.path.exists(asffnet_checkpoint_path):
         checkpoint = torch.load(asffnet_checkpoint_path)
         G_loss_list.append(checkpoint['g_loss'])
         D_loss_list.append(checkpoint['d_loss'])
         idx += 1
-        asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(idx + 1)
+        asffnet_checkpoint_path = log_dir_path + 'asff_train_log{}.pth'.format(idx)
 
     # 각 데이터 포인트에 값 표시
     for key, _ in G_loss_list[0].items():
@@ -53,7 +53,7 @@ def print_asff_log():
         plt.ylabel('loss')
 
         # 그래프 저장
-        plt.savefig('{}.png'.format(key))
+        plt.savefig('./loss_plot/{}.png'.format(key))
         plt.clf()
 
     # 꺾은선 그래프 그리기
@@ -70,7 +70,7 @@ def print_asff_log():
     plt.ylabel('loss')
 
     # 그래프 저장
-    plt.savefig('d_loss.png')
+    plt.savefig('./loss_plot/d_loss.png')
 
 
 if __name__ == '__main__':

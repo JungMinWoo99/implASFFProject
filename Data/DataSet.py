@@ -2,7 +2,7 @@ import os
 
 import torch
 from torch.utils.data import Dataset
-from ImgData import ImgData
+from Data.ImgData import ImgData
 from model.WLS import WLS
 
 
