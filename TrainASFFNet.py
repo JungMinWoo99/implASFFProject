@@ -162,7 +162,7 @@ for e in range(epoch):
                               "\ntotal_loss: " + str((G_loss["total_loss"])))
 
             if not add_adv_loss:
-                G_loss["total_loss"] -= tradeoff_parm_adv * G_loss["adv_loss"]
+                G_loss["total_loss"] = tradeoff_parm_mse * G_loss["mse_loss"] + tradeoff_parm_perc * G_loss["perc_loss"] + tradeoff_parm_style * G_loss["style_loss"]
 
             optimizerG.zero_grad()
             G_loss["total_loss"].backward()
@@ -184,6 +184,9 @@ for e in range(epoch):
         for data in tqdm(test_dataloader, desc='calculate loss'):
             D_loss = get_d_loss(data)
             G_loss = get_g_loss(data)
+
+            if not add_adv_loss:
+                G_loss["total_loss"] = tradeoff_parm_mse * G_loss["mse_loss"] + tradeoff_parm_perc * G_loss["perc_loss"] + tradeoff_parm_style * G_loss["style_loss"]
 
             for key, value in G_loss_sum_dict.items():
                 G_loss_sum_dict[key] += G_loss[key].item()

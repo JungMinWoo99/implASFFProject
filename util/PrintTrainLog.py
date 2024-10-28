@@ -32,13 +32,15 @@ def print_asff_log(log_dir_path = './'):
     idx = 0
     G_loss_list = []
     D_loss_list = []
-    asffnet_checkpoint_path = log_dir_path + 'asff_train_log{}.pth'.format(idx)
+    asffnet_checkpoint_path = os.path.join(log_dir_path,'asff_train_log{}.pth'.format(idx))
     while os.path.exists(asffnet_checkpoint_path):
         checkpoint = torch.load(asffnet_checkpoint_path)
         G_loss_list.append(checkpoint['g_loss'])
         D_loss_list.append(checkpoint['d_loss'])
         idx += 1
-        asffnet_checkpoint_path = log_dir_path + 'asff_train_log{}.pth'.format(idx)
+        asffnet_checkpoint_path = os.path.join(log_dir_path, 'asff_train_log{}.pth'.format(idx))
+
+    os.makedirs('./loss_plot', exist_ok=True)
 
     # 각 데이터 포인트에 값 표시
     for key, _ in G_loss_list[0].items():

@@ -5,6 +5,27 @@ import cv2
 import os
 from torchvision.transforms.functional import normalize
 from util.DirectoryUtils import get_land_data_path
+import face_alignment  # pip install face-alignment or conda install -c 1adrianb face_alignment
+
+FaceDetection = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cuda')
+
+def ext_landmarks(img_mat, img_path=''):
+    idx = 0
+    try:
+        img_landmarks = FaceDetection.get_landmarks_from_image(img_mat)
+    except:
+        print('Error in detecting this face {}. Continue...'.format(img_path))
+    if img_landmarks is None:
+        print('Warning: No face is detected in {}. Continue...'.format(img_path))
+    elif len(img_landmarks) > 3:
+        hights = []
+        for l in img_landmarks:
+            hights.append(l[8, 1] - l[19, 1])  # choose the largest face
+        idx = hights.index(max(hights))
+        print(
+            'Warning: Too many faces are detected in img, only handle the largest one...')
+    selected_landmarks = img_landmarks[idx]
+    return selected_landmarks
 
 
 class ImgData:
@@ -28,9 +49,10 @@ class ImgData:
         return img_mat
 
     def _get_img_landmarks(self):
-        if not os.path.exists(self.land_path):
-            return None, None
-        selected_landmarks = np.load(self.land_path)
+        if os.path.exists(self.land_path):
+            selected_landmarks = np.load(self.land_path)
+        else:
+            selected_landmarks = ext_landmarks(self.img_mat)
         img_landmarks_tensor = torch.from_numpy(selected_landmarks).transpose(0, 1).to(default_device)
         return selected_landmarks, img_landmarks_tensor
 
@@ -44,13 +66,13 @@ class ImgData:
         return img_tensor
 
     def get_bin_img_tensor(self):
-        l_point_scale = 2
+        l_point_scale = 1
         landmarks_bin_img_tensor = torch.zeros((1, g_output_img_size, g_output_img_size)).to(default_device)
-        for landmark in self.img_landmarks:
-            x, y = landmark
+        for landmark in self.img_landmarks[17::2]:
+            y, x = landmark
             if x - l_point_scale >= 0 and x + l_point_scale < g_output_img_size and y - l_point_scale >= 0 and y + l_point_scale < g_output_img_size:
-                landmarks_bin_img_tensor[0, int(x - l_point_scale):int(x + l_point_scale),
-                int(y - l_point_scale):int(y + l_point_scale)] = 1
+                landmarks_bin_img_tensor[0, int(x):int(x + l_point_scale),
+                int(y):int(y + l_point_scale)] = 1
         return landmarks_bin_img_tensor
 
 

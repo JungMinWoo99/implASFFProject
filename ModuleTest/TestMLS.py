@@ -1,4 +1,4 @@
-from model.MLS import MLS
+from model.MLS_fail import MLS
 from Data.DataSet import ASFFDataSet
 import os
 import cv2

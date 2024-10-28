@@ -86,11 +86,14 @@ def split_sub_folder(target_directory):
     for index, folder_name in enumerate(sorted(folders), start=1):
         sub_folder_dir = os.path.join(target_directory, folder_name)
         file_list = [f for f in os.listdir(sub_folder_dir) if os.path.isfile(os.path.join(sub_folder_dir, f))]
-        file_num = len(file_list)
-        if file_num > 10:
-            new_folder = sub_folder_dir + "_split"
-            os.makedirs(new_folder)
-            for f in file_list[file_num // 2:]:
+
+        # 10개씩 나누기 위한 변수 설정
+        for split_index in range(0, len(file_list), 10):
+            new_folder = f"{sub_folder_dir}_split{split_index // 10 + 1}"
+            os.makedirs(new_folder, exist_ok=True)
+
+            # 현재 10개의 파일을 이동
+            for f in file_list[split_index: split_index + 10]:
                 file_path = os.path.join(sub_folder_dir, f)
                 shutil.move(file_path, new_folder)
 

@@ -23,8 +23,13 @@ class ASFFNet(nn.Module):
         fea_d = self.img_d_fea_ex(img_d)
         fea_g = self.img_g_fea_ex(img_g)
         fea_l_d = self.bin_d_fea_ex(bin_land_d)
+
+        DownScale = img_d.size(2) / fea_d.size(2)
+        land_d_d = land_d / DownScale
+        land_g_d = land_g / DownScale
+
         # fea_gwa = self.adain(self.mls(fea_g, land_d, land_g), fea_d)
-        fea_gwa = self.mls(self.adain(fea_g, fea_d), land_d, land_g)
+        fea_gwa = self.mls(self.adain(fea_g, fea_d), land_d_d, land_g_d)
         fea_gwa_cond = self.gwa_cond_fea_ex(fea_gwa)
         fea_c = self.fea_fusion(fea_d, fea_gwa_cond, fea_l_d)
         fea_c_ms = self.ms_fea_ex(fea_c)
