@@ -1,4 +1,4 @@
-from DataSet import WLSDataSet
+from Data.DataSet import WLSDataSet
 from util import DirectoryUtils
 from torch.utils.data import DataLoader
 from tqdm import tqdm

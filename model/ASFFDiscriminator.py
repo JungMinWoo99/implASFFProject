@@ -71,7 +71,7 @@ class DisBlock(nn.Module):
 
 
 class SNGANDiscriminator(nn.Module):
-    def __init__(self, activation=nn.ReLU()):
+    def __init__(self, activation=nn.Tanh()):
         super(SNGANDiscriminator, self).__init__()
         self.activation = activation
         self.block1 = OptimizedDisBlock(3, 64)
@@ -130,7 +130,7 @@ class DCGANDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # state size. ``(ndf*32) x 4 x 4``
             nn.utils.spectral_norm(nn.Conv2d(ndf * 32, 1, 4, 1, 0, bias=False)),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, l):

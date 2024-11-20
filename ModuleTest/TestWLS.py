@@ -1,8 +1,7 @@
-from DataSet import WLSDataSet
+from Data.DataSet import WLSDataSet
 from util import DirectoryUtils
 from torch.utils.data import DataLoader
 from model.WLS import WLS
-import torch
 import numpy as np
 from constant import *
 
@@ -61,7 +60,7 @@ test_dataloader = DataLoader(
 )
 
 while True:
-    test_case = int(input())
+    test_case = int(input("실행할 테스트 번호"))
     print(test_data_list[test_case])
     ret, answer = wls.compute_loss(wls_test_data[test_case][0], wls_test_data[test_case][1])
     test_answer = cal_sim(wls_test_data[test_case][0], wls_test_data[test_case][1])

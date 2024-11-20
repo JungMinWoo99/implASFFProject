@@ -1,5 +1,6 @@
 from constant import *
 import os
+import random
 import shutil
 import csv
 import re
@@ -85,11 +86,14 @@ def split_sub_folder(target_directory):
     for index, folder_name in enumerate(sorted(folders), start=1):
         sub_folder_dir = os.path.join(target_directory, folder_name)
         file_list = [f for f in os.listdir(sub_folder_dir) if os.path.isfile(os.path.join(sub_folder_dir, f))]
-        file_num = len(file_list)
-        if file_num > 10:
-            new_folder = sub_folder_dir + "_split"
-            os.makedirs(new_folder)
-            for f in file_list[file_num // 2:]:
+
+        # 10개씩 나누기 위한 변수 설정
+        for split_index in range(0, len(file_list), 10):
+            new_folder = f"{sub_folder_dir}_split{split_index // 10 + 1}"
+            os.makedirs(new_folder, exist_ok=True)
+
+            # 현재 10개의 파일을 이동
+            for f in file_list[split_index: split_index + 10]:
                 file_path = os.path.join(sub_folder_dir, f)
                 shutil.move(file_path, new_folder)
 
@@ -119,6 +123,30 @@ def make_testcase_list():
     with open(img_list_csv_file_name, 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(case_list)
+
+def separate_img_list_to_train_and_test_list():
+    # CSV 파일을 읽어옵니다.
+    input_file = select_file("Select img list file")
+    case_list = read_list_from_csv(input_file)
+    print('total size' + str(len(case_list)))
+
+    # 데이터프레임을 절반으로 나눕니다.
+    test_data_num = int(input('test data num:'))
+    df1 = case_list[:-test_data_num]  # 첫 번째 절반
+    df2 = case_list[-test_data_num:]  # 두 번째 절반
+
+    # 나눈 데이터를 각각 새로운 CSV 파일로 저장합니다.
+    # CSV 파일로 저장
+    with open('../train_data.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        random.shuffle(df1)
+        writer.writerows(df1)
+    with open('../test_data.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        random.shuffle(df2)
+        writer.writerows(df2)
+
+    print("CSV 파일이 두 개의 파일로 성공적으로 나누어졌습니다.")
 
 
 def read_list_from_csv(csv_file_path):
