@@ -1,4 +1,5 @@
-from Data.ImgData import ImgData
+from constant import *
+import cv2
 from tqdm import tqdm
 from util import DirectoryUtils
 import os
@@ -6,6 +7,7 @@ import numpy as np
 import face_alignment  # pip install face-alignment or conda install -c 1adrianb face_alignment
 
 FaceDetection = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cuda')
+
 
 def ext_landmarks(img_mat, img_path=''):
     idx = 0
@@ -15,6 +17,7 @@ def ext_landmarks(img_mat, img_path=''):
         print('Error in detecting this face {}. Continue...'.format(img_path))
     if img_landmarks is None:
         print('Warning: No face is detected in {}. Continue...'.format(img_path))
+        return None
     elif len(img_landmarks) > 3:
         hights = []
         for l in img_landmarks:
@@ -24,6 +27,7 @@ def ext_landmarks(img_mat, img_path=''):
             'Warning: Too many faces are detected in img, only handle the largest one...')
     selected_landmarks = img_landmarks[idx]
     return selected_landmarks
+
 
 def save_landmarks(img_dataset_path, land_dataset_path):
     DirectoryUtils.copy_subfolders(img_dataset_path, land_dataset_path)
@@ -39,9 +43,17 @@ def save_landmarks(img_dataset_path, land_dataset_path):
             land_file_path = os.path.join(land_sub_folder_dir, f)[:-4] + '.npy'
             file_name, file_extension = os.path.splitext(img_file_path)
             if file_extension == '.png':
-                img = ImgData(img_file_path)
-                resized_img_mat = img.img_mat
 
-                selected_landmarks = ext_landmarks(resized_img_mat, img.img_path)
+                img_mat = cv2.imread(img_file_path, cv2.IMREAD_UNCHANGED)  # BGR or G
+                if img_mat.ndim == 2:
+                    img_mat = cv2.cvtColor(img_mat, cv2.COLOR_GRAY2RGB)  # GGG
+                else:
+                    img_mat = cv2.cvtColor(img_mat, cv2.COLOR_BGR2RGB)  # RGB
+                if img_mat.shape[0] != g_output_img_size or img_mat.shape[1] != g_output_img_size:
+                    img_mat = cv2.resize(img_mat, (g_output_img_size, g_output_img_size), interpolation=cv2.INTER_AREA)
+
+                resized_img_mat = img_mat
+
+                selected_landmarks = ext_landmarks(resized_img_mat, img_file_path)
 
                 np.save(land_file_path, selected_landmarks)

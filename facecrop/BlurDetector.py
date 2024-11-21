@@ -5,33 +5,23 @@ import os
 import cv2
 import constant
 from tqdm import tqdm
-import face_alignment  # pip install face-alignment or conda install -c 1adrianb face_alignment
-
-FaceDetection = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cuda')
+from util.SaveLandmarks import ext_landmarks
+import dlib
 
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
+# Dlib의 HOG 얼굴 검출 모델 로드
+detector = dlib.get_frontal_face_detector()
 
-def ext_landmarks(img_mat, img_path=''):
-    idx = 0
-    try:
-        img_landmarks = FaceDetection.get_landmarks_from_image(img_mat)
-    except:
-        print('Error in detecting this face {}. Continue...'.format(img_path))
+def detect_faces_hog(image, min_face_size=200):
+    # 얼굴 감지
+    faces = detector(image, 1)  # 1은 이미지 피라미드의 스케일을 의미합니다.
 
-    if img_landmarks is None:
-        print('Warning: No face is detected in {}. Continue...'.format(img_path))
-        return None
-    elif len(img_landmarks) > 3:
-        hights = []
-        for l in img_landmarks:
-            hights.append(l[8, 1] - l[19, 1])  # choose the largest face
-        idx = hights.index(max(hights))
-        print(
-            'Warning: Too many faces are detected in img, only handle the largest one...')
-
-    selected_landmarks = img_landmarks[idx]
-    return selected_landmarks
+    # 설정된 크기 이상의 얼굴이 하나 이상 있는지 확인
+    # 설정된 크기 이상의 얼굴이 하나 이상 있는지 확인
+    has_clear_face = any((face.right() - face.left() >= min_face_size) and
+                         (face.bottom() - face.top() >= min_face_size) for face in faces)
+    return has_clear_face  # 얼굴이 있으면 True, 없으면 False
 
 
 def is_gray_img(image):
@@ -132,6 +122,19 @@ class NonFaceImgFilter:
             self.deleted_img_count += 1
 
 
+class DlibNonFaceImgFilter:
+    def __init__(self):
+        self.img_count = 0
+        self.deleted_img_count = 0
+
+    def __call__(self, file_path):
+        img = cv2.imread(file_path)
+        self.img_count += 1
+        if not detect_faces_hog(img):
+            os.remove(file_path)
+            self.deleted_img_count += 1
+
+
 class GrayImgFilter:
     def __init__(self):
         self.img_count = 0
@@ -216,7 +219,7 @@ if __name__ == '__main2__':
     print("all: {}".format(d.img_count))
     print("del: {}".format(d.deleted_img_count))
 
-if __name__ == '__main__':
+if __name__ == '__main123__':
     g = GrayImgFilter()
     find_and_process_img_file(
         start_dir="E:/code_depository/depository_python/FSR_project/ImpASFF/facecrop/CASIA-WebFace_crop_sort2",
@@ -244,9 +247,9 @@ if __name__ == '__main123__':
     print("del: {}".format(nf.deleted_img_count))
 
 if __name__ == '__main__':
-    nf = NonFaceImgFilter()
+    nf = DlibNonFaceImgFilter()
     find_and_process_img_file(
-        start_dir=r"C:\Users\minwoo\code_depository\DataSet\ProjectDataSet2\hp_img",
+        start_dir=r"C:\Users\minwoo\code_depository\DataSet\ProjectDataSet3\hp_img",
         processor=nf, extension="png")
     print("all: {}".format(nf.img_count))
     print("del: {}".format(nf.deleted_img_count))

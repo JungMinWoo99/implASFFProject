@@ -14,10 +14,10 @@ def gaussian_kernel(size, sigma):
 def apply_motion_blur(image, kernel):
     """이미지에 모션 블러를 적용하는 함수."""
     if len(image.shape) == 2:  # 그레이스케일 이미지
-        return convolve2d(image, kernel, mode='same', boundary='wrap')
+        return convolve2d(image, kernel, mode='same', boundary='wrap').astype(np.uint8)
     elif len(image.shape) == 3:  # 컬러 이미지
         channels = [convolve2d(image[:, :, i], kernel, mode='same', boundary='wrap') for i in range(3)]
-        return np.stack(channels, axis=-1)
+        return np.stack(channels, axis=-1).astype(np.uint8)
     else:
         raise ValueError('Unsupported image shape.')
 
@@ -43,7 +43,7 @@ def downscale_image(image, scale_factor):
     new_dimensions = (int(width / scale_factor), int(height / scale_factor))
     if new_dimensions[0] <= 0 or new_dimensions[1] <= 0:
         raise ValueError(f"Invalid scale factor {scale_factor} resulting in non-positive dimensions {new_dimensions}.")
-    print(f"Downscaling from {image.shape[:2]} to {new_dimensions} with scale factor {scale_factor}")
+    #print(f"Downscaling from {image.shape[:2]} to {new_dimensions} with scale factor {scale_factor}")
     downscaled_image = cv2.resize(image, new_dimensions, interpolation=cv2.INTER_CUBIC)
     return downscaled_image
 
@@ -53,7 +53,7 @@ def degradation_model(image_path,
                       gaussian_blur_sigma_values=np.arange(1, 3.1, 0.1),
                       motion_blur_kernels=None,
                       # 다운스케일링 파라미터
-                      scale_factor_values=np.arange(1, 8.1, 0.1),
+                      scale_factor_values=np.arange(2, 3, 0.1),
                       # 노이즈 관련 파라미터
                       noise_sigma_values=range(0, 16),
                       # JPEG 압축 파라미터
@@ -85,6 +85,7 @@ def degradation_model(image_path,
 
     # 이미지 다운스케일링
     scale_factor = random.choice(scale_factor_values)
+    blurred_image = np.array(blurred_image, dtype='uint8')
     downscaled_image = downscale_image(blurred_image, scale_factor)
 
     # 가우시안 노이즈 추가
@@ -100,12 +101,12 @@ def degradation_model(image_path,
     return degraded_image
 
 
-# 예시 모션 블러 커널 (더 추가하거나 파일에서 로드 가능)
 motion_blur_kernels = [
-    # 32개의 모션 블러 커널을 여기에 추가합니다
-    np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),  # 예시 커널
-    np.fliplr(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))  # 예시 커널 반전
-    # 나머지 30개의 모션 블러 커널을 추가
+    np.array([[1/3, 1/3, 1/3]]),  # 3x1 수평 블러
+    np.array([[1/5, 1/5, 1/5, 1/5, 1/5]]),  # 5x1 수평 블러
+    np.array([[1/7] * 7]),  # 7x1 수평 블러
+    np.array([[1/3], [1/3], [1/3]]),  # 3x1 수직 블러
+    np.array([[1/5], [1/5], [1/5], [1/5], [1/5]])  # 5x1 수직 블러
 ]
 
 if __name__ == '__main__':

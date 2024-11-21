@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.utils as utils
 import constant
-import model.MLS as MLS
+import model.MLS_fail as MLS
 import model.AdaIN as AdaIN
 
 
@@ -38,7 +38,8 @@ class ASFFNet(nn.Module):
             "lq_fea": fea_d,
             "ref_fea": fea_g,
             "bin_fea": fea_l_d,
-            "warped_ref_fea": fea_gwa_cond,
+            "warped_ref_fea1": fea_gwa,
+            "warped_ref_fea2": fea_gwa_cond,
             "asff_fea": fea_c_ms + fea_d
         }
 

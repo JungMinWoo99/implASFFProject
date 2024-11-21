@@ -1,4 +1,5 @@
 from constant import *
+from util.SaveLandmarks import ext_landmarks
 import numpy as np
 import torch
 import cv2
@@ -8,25 +9,6 @@ from util.DirectoryUtils import get_land_data_path
 import face_alignment  # pip install face-alignment or conda install -c 1adrianb face_alignment
 
 FaceDetection = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cuda')
-
-def ext_landmarks(img_mat, img_path=''):
-    idx = 0
-    try:
-        img_landmarks = FaceDetection.get_landmarks_from_image(img_mat)
-    except:
-        print('Error in detecting this face {}. Continue...'.format(img_path))
-    if img_landmarks is None:
-        print('Warning: No face is detected in {}. Continue...'.format(img_path))
-    elif len(img_landmarks) > 3:
-        hights = []
-        for l in img_landmarks:
-            hights.append(l[8, 1] - l[19, 1])  # choose the largest face
-        idx = hights.index(max(hights))
-        print(
-            'Warning: Too many faces are detected in img, only handle the largest one...')
-    selected_landmarks = img_landmarks[idx]
-    return selected_landmarks
-
 
 class ImgData:
     def __init__(self, img_path):
@@ -53,6 +35,8 @@ class ImgData:
             selected_landmarks = np.load(self.land_path)
         else:
             selected_landmarks = ext_landmarks(self.img_mat)
+            if selected_landmarks is None:
+                return None, None
         img_landmarks_tensor = torch.from_numpy(selected_landmarks).transpose(0, 1).to(default_device)
         return selected_landmarks, img_landmarks_tensor
 
@@ -71,8 +55,8 @@ class ImgData:
         for landmark in self.img_landmarks[17::2]:
             y, x = landmark
             if x - l_point_scale >= 0 and x + l_point_scale < g_output_img_size and y - l_point_scale >= 0 and y + l_point_scale < g_output_img_size:
-                landmarks_bin_img_tensor[0, int(x):int(x + l_point_scale),
-                int(y):int(y + l_point_scale)] = 1
+                landmarks_bin_img_tensor[0, int(x - l_point_scale):int(x + l_point_scale),
+                int(y - l_point_scale):int(y + l_point_scale)] = 1
         return landmarks_bin_img_tensor
 
 

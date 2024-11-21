@@ -26,7 +26,7 @@ def get_d_loss(data):
                    data['lp_landmarks_tensor'], data['g_img_landmarks_tensor'])
     F_truth = data['hp_img_tensor']
 
-    fake_validity = asffnetD(F_h)
+    fake_validity = asffnetD(F_h.detach())
     real_validity = asffnetD(F_truth)
     D_loss = Loss.ASFFadvLoss(real_validity, fake_validity)
     return D_loss
@@ -42,6 +42,9 @@ def get_g_loss(data):
 
     return G_loss
 
+
+save_dir = './train_log'
+os.makedirs(save_dir, exist_ok=True)
 
 train_logger = logging.getLogger('train_logger')
 train_logger.setLevel(logging.INFO)
@@ -70,9 +73,6 @@ asffnetG.apply(weights_init)
 print_model_size(asffnetG, 'asffG')
 print_model_size(asffnetD, 'asffD')
 
-train_D = DirectoryUtils.ask_load_file("train D?")
-train_G = DirectoryUtils.ask_load_file("train G?")
-
 load_checkpoint = DirectoryUtils.ask_load_file("load checkpoint?")
 if load_checkpoint:
     asffnet_checkpoint_path = 'asff_train_log{}.pth'.format(file_num)
@@ -86,11 +86,11 @@ if load_checkpoint:
     load_g = DirectoryUtils.ask_load_file("load g_state?")
     if load_g:
         asffnetG.load_state_dict(checkpoint['gen_state_dict'])
-        #optimizerG.load_state_dict(checkpoint['gen_optimizer'])
+        optimizerG.load_state_dict(checkpoint['gen_optimizer'])
     load_d = DirectoryUtils.ask_load_file("load d_state?")
     if load_d:
         asffnetD.load_state_dict(checkpoint['dis_state_dict'])
-        #optimizerD.load_state_dict(checkpoint['dis_optimizer'])
+        optimizerD.load_state_dict(checkpoint['dis_optimizer'])
     file_num += 1
 
 # train_data_set_path = DirectoryUtils.select_file("train data list csv")
@@ -137,36 +137,25 @@ add_adv_loss = DirectoryUtils.ask_load_file("add adv_loss?")
 
 epoch = 30
 for e in range(epoch):
+    asffnetG.train()
+    asffnetD.train()
 
-    if train_D:
-        asffnetG.eval()
-        asffnetD.train()
-        for data in tqdm(train_dataloader, desc='Train Discriminator'):
-            truth_D_loss = get_d_loss(data)
+    for data in tqdm(train_dataloader, desc='Train ASFF'):
+        truth_D_loss = get_d_loss(data)
+        optimizerD.zero_grad()
+        truth_D_loss.backward()
+        optimizerD.step()
 
-            optimizerD.zero_grad()
-            truth_D_loss.backward()
-            optimizerD.step()
-
-    if train_G:
-        asffnetG.train()
-        asffnetD.eval()
-        for data in tqdm(train_dataloader, desc='Train Generator'):
-            G_loss = get_g_loss(data)
-
-            train_logger.info("\n train loss {}".format(e) + \
-                              "\nmse_loss: " + str((tradeoff_parm_mse * G_loss["mse_loss"])) + \
-                              "\nperc_loss: " + str((tradeoff_parm_perc * G_loss["perc_loss"])) + \
-                              "\nstyle_loss: " + str((tradeoff_parm_style * G_loss["style_loss"])) + \
-                              "\nadv_loss: " + str((tradeoff_parm_adv * G_loss["adv_loss"])) + \
-                              "\ntotal_loss: " + str((G_loss["total_loss"])))
-
-            if not add_adv_loss:
-                G_loss["total_loss"] = tradeoff_parm_mse * G_loss["mse_loss"] + tradeoff_parm_perc * G_loss["perc_loss"] + tradeoff_parm_style * G_loss["style_loss"]
-
-            optimizerG.zero_grad()
-            G_loss["total_loss"].backward()
-            optimizerG.step()
+        G_loss = get_g_loss(data)
+        train_logger.info("\n train loss {}".format(e) + \
+                          "\nmse_loss: " + str((tradeoff_parm_mse * G_loss["mse_loss"])) + \
+                          "\nperc_loss: " + str((tradeoff_parm_perc * G_loss["perc_loss"])) + \
+                          "\nstyle_loss: " + str((tradeoff_parm_style * G_loss["style_loss"])) + \
+                          "\nadv_loss: " + str((tradeoff_parm_adv * G_loss["adv_loss"])) + \
+                          "\ntotal_loss: " + str((G_loss["total_loss"])))
+        optimizerG.zero_grad()
+        G_loss["total_loss"].backward()
+        optimizerG.step()
 
     torch.cuda.empty_cache()
 
@@ -219,7 +208,7 @@ for e in range(epoch):
               "\ntotal_loss: " + str((G_loss_avg["total_loss"])) + \
               "\nd_loss: " + str(D_loss_avg))
 
-        # 가중치 텐서 저장
+        log_file_path = os.path.join(save_dir, 'asff_train_log{}.pth'.format(file_num))
         torch.save({
             'epoch': file_num,
             'gen_state_dict': asffnetG.state_dict(),
@@ -228,5 +217,5 @@ for e in range(epoch):
             'dis_optimizer': optimizerD.state_dict(),
             'g_loss': G_loss_avg,
             'd_loss': D_loss_avg
-        }, 'asff_train_log{}.pth'.format(file_num))
+        }, log_file_path)
         file_num += 1

@@ -50,7 +50,7 @@ def rename_folders_in_directory(target_directory):
             else:
                 # 기존 폴더 이름을 숫자로 된 새 이름으로 변경
                 os.rename(old_folder_path, new_folder_path)
-                print(f"Renamed '{old_folder_path}' to '{new_folder_path}'")
+                #print(f"Renamed '{old_folder_path}' to '{new_folder_path}'")
                 break
 
 
@@ -76,7 +76,7 @@ def rename_file_in_directory(target_directory):
                         idx += 1
                 else:
                     os.rename(old_file_path, new_file_path)
-                    print(f"Renamed '{old_file_path}' to '{new_file_path}'")
+                    #print(f"Renamed '{old_file_path}' to '{new_file_path}'")
                     break
 
 
@@ -87,37 +87,44 @@ def split_sub_folder(target_directory):
         sub_folder_dir = os.path.join(target_directory, folder_name)
         file_list = [f for f in os.listdir(sub_folder_dir) if os.path.isfile(os.path.join(sub_folder_dir, f))]
 
-        # 10개씩 나누기 위한 변수 설정
-        for split_index in range(0, len(file_list), 10):
-            new_folder = f"{sub_folder_dir}_split{split_index // 10 + 1}"
-            os.makedirs(new_folder, exist_ok=True)
+        if len(file_list) > 10:
+            # 10개씩 나누기 위한 변수 설정
+            for split_index in range(0, len(file_list), 10):
+                new_folder = f"{sub_folder_dir}_split{split_index // 10 + 1}"
+                os.makedirs(new_folder, exist_ok=True)
 
-            # 현재 10개의 파일을 이동
-            for f in file_list[split_index: split_index + 10]:
-                file_path = os.path.join(sub_folder_dir, f)
-                shutil.move(file_path, new_folder)
+                # 현재 10개의 파일을 이동
+                for f in file_list[split_index: split_index + 10]:
+                    file_path = os.path.join(sub_folder_dir, f)
+                    shutil.move(file_path, new_folder)
+
 
 
 def make_testcase_list():
-    lq_img_dir = select_folder()
-    hq_img_dir = select_folder()
+    lq_img_dir = select_folder("저해상도 이미지 폴더")
+    ref_img_dir = select_folder("참조 이미지 폴더")
+    hq_img_dir = select_folder("고해상도 이미지 폴더")
     lq_img_folders = [f for f in os.listdir(lq_img_dir) if os.path.isdir(os.path.join(lq_img_dir, f))]
+    ref_img_folders = [f for f in os.listdir(ref_img_dir) if os.path.isdir(os.path.join(ref_img_dir, f))]
     hq_img_folders = [f for f in os.listdir(hq_img_dir) if os.path.isdir(os.path.join(hq_img_dir, f))]
     case_list = []
 
     if len(lq_img_folders) != len(hq_img_folders):
         print("LQ_img_dir != HQ_img_dir")
-    for lq_folder_name, hq_folder_name in zip(sorted(lq_img_folders), sorted(hq_img_folders)):
+    for lq_folder_name, ref_folder_name, hq_folder_name in zip(sorted(lq_img_folders), sorted(ref_img_folders), sorted(hq_img_folders)):
         lq_sub_folder_dir = os.path.join(lq_img_dir, lq_folder_name)
+        ref_sub_folder_dir = os.path.join(ref_img_dir, ref_folder_name)
         hq_sub_folder_dir = os.path.join(hq_img_dir, hq_folder_name)
         lq_file_list = [f for f in os.listdir(lq_sub_folder_dir) if os.path.isfile(os.path.join(lq_sub_folder_dir, f))]
         hq_file_list = [f for f in os.listdir(hq_sub_folder_dir) if os.path.isfile(os.path.join(hq_sub_folder_dir, f))]
         if len(lq_file_list) != len(hq_file_list):
-            print("LQ_img_dir != HQ_img_dir")
+            print("lq_file_list != hq_file_list")
+            print(lq_sub_folder_dir)
+            print(hq_sub_folder_dir)
         for lq_f, hq_f in zip(lq_file_list, hq_file_list):
             lq_file_path = os.path.join(lq_sub_folder_dir, lq_f)
             hq_file_path = os.path.join(hq_sub_folder_dir, hq_f)
-            case_list.append((lq_file_path, hq_sub_folder_dir, hq_file_path))
+            case_list.append((lq_file_path, ref_sub_folder_dir, hq_file_path))
 
     # CSV 파일로 저장
     with open(img_list_csv_file_name, 'w', newline='') as file:
