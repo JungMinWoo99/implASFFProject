@@ -12,6 +12,9 @@ fea_map_out_path = osp.join(fea_map_out_path + '_' + c_time)
 os.makedirs(fea_map_out_path, exist_ok=True)
 
 def visualize_feature_map(feature_map, decripsion):  # 특징 맵 시각화 함수
+    if not hasattr(visualize_feature_map, "counter"):
+        visualize_feature_map.counter = 0
+
     num_channels = feature_map.shape[1]
 
     # num_channels가 정사각형 배열로 가능한지 확인
@@ -38,5 +41,8 @@ def visualize_feature_map(feature_map, decripsion):  # 특징 맵 시각화 함�
         plt.axis('off')
     # 그래프 간격 조정
     plt.subplots_adjust(wspace=0, hspace=0, left=0.05, bottom=0.05, right=0.95, top=0.95)  # 가로, 세로 간격 조정
-    plt.savefig(osp.join(fea_map_out_path, decripsion + '.png'))
+    if osp.exists(osp.join(fea_map_out_path, decripsion + str(visualize_feature_map.counter) + '.png')):
+        visualize_feature_map.counter = visualize_feature_map.counter + 1
+
+    plt.savefig(osp.join(fea_map_out_path, decripsion + str(visualize_feature_map.counter) + '.png'))
     plt.close()

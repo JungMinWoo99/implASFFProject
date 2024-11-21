@@ -9,3 +9,5 @@ pretrained_weight/
 TestExamples/
 *.log
 *.jpg
+train_log/
+sample/
